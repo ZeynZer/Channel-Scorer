@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>Channel Scorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+:root{
+  --bg:#070a10;--s1:#0c1119;--s2:#111720;--s3:#161e2a;
+  --b1:rgba(255,255,255,0.06);--b2:rgba(255,255,255,0.11);--b3:rgba(255,255,255,0.18);
+  --t1:#eef2ff;--t2:#7e8ea8;--t3:#4a5568;
+  --ac:#4f8cff;--pu:#8b5cf6;
+  --gr:#10d9a0;--ye:#f5c518;--or:#f97316;--re:#ef4444;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{font-size:16px;scroll-behavior:smooth}
+body{background:var(--bg);color:var(--t1);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 20% -10%,rgba(79,140,255,0.05),transparent),radial-gradient(ellipse 60% 40% at 90% 80%,rgba(139,92,246,0.05),transparent);pointer-events:none;z-index:0}
+#root{position:relative;z-index:1;min-height:100vh}
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:3px}
+
+@keyframes up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes pop{from{opacity:0;transform:translateX(-50%) scale(.94)}to{opacity:1;transform:translateX(-50%) scale(1)}}
+@keyframes barIn{from{width:0}to{width:var(--tw,0%)}}
+@keyframes scoreIn{from{opacity:0;transform:scale(.8) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
+.fade{animation:up .38s cubic-bezier(.22,1,.36,1) both}
+.app{max-width:500px;margin:0 auto;padding:0 0 90px}
+@media(min-width:760px){.app{max-width:720px;padding:0 0 60px}}
+@media(min-width:1100px){.app{max-width:1040px}}
+
+/* ── HEADER ── */
+.site-header{
+  padding:28px 20px 0;
+  position:sticky;top:0;z-index:100;
+  background:linear-gradient(to bottom,var(--bg) 70%,transparent);
+}
+.site-title{
+  font-family:'Syne',sans-serif;font-weight:800;
+  font-size:1.5rem;letter-spacing:-.5px;line-height:1;
+  background:linear-gradient(135deg,#e0eaff 0%,#a78bfa 60%,#4f8cff 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  margin-bottom:2px;
+}
+.site-sub{font-size:.75rem;color:var(--t2);letter-spacing:.3px;margin-bottom:16px}
+.srch-row{display:flex;gap:8px;margin-bottom:0}
+.srch-box{display:flex;flex:1;align-items:center;gap:10px;background:var(--s1);border:1px solid var(--b2);border-radius:14px;padding:10px 14px;transition:border-color .2s,box-shadow .2s}
+.srch-box:focus-within{border-color:rgba(79,140,255,.5);box-shadow:0 0 0 3px rgba(79,140,255,.08)}
+.srch-box input{flex:1;background:transparent;border:none;outline:none;color:var(--t1);font-family:'DM Sans',sans-serif;font-size:.9rem;caret-color:var(--ac)}
+.srch-box input::placeholder{color:var(--t3)}
+.btn-go{background:linear-gradient(135deg,var(--ac),var(--pu));border:none;border-radius:12px;padding:10px 20px;color:#fff;font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:opacity .2s,transform .15s;letter-spacing:.2px}
+.btn-go:hover{opacity:.88;transform:translateY(-1px)}
+.btn-go:active{transform:translateY(0)}
+.btn-go:disabled{opacity:.35;cursor:not-allowed;transform:none}
+
+/* ── NAV TABS ── */
+.nav-tabs{display:flex;gap:4px;padding:14px 20px 0;overflow-x:auto;scrollbar-width:none}
+.nav-tabs::-webkit-scrollbar{display:none}
+.ntab{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--b1);border-radius:20px;background:transparent;color:var(--t2);font-family:'DM Sans',sans-serif;font-size:.8rem;cursor:pointer;transition:all .2s;white-space:nowrap}
+.ntab svg{width:14px;height:14px;flex-shrink:0}
+.ntab.on{background:rgba(79,140,255,.12);border-color:rgba(79,140,255,.35);color:var(--t1)}
+
+/* ── GENERIC ── */
+.pad{padding:0 20px}
+.card{background:var(--s1);border:1px solid var(--b1);border-radius:20px;padding:18px 20px;margin:0 20px 12px}
+.sec{font-family:'Syne',sans-serif;font-size:.65rem;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--t2);padding:12px 20px 8px;display:flex;align-items:center;gap:10px}
+.sec::after{content:'';flex:1;height:1px;background:var(--b1)}
+.row{display:flex;align-items:center;gap:10px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:600;background:rgba(255,255,255,.06);border:1px solid var(--b1)}
+
+/* ── SCORE HERO ── */
+.hero{background:var(--s1);border:1px solid var(--b1);border-radius:22px;margin:12px 20px 12px;padding:22px;position:relative;overflow:hidden}
+.hero-bar{position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--hc1,#4f8cff),var(--hc2,#8b5cf6))}
+.ch-row{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.ch-av{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--b2);flex-shrink:0}
+.ch-av-ph{width:48px;height:48px;border-radius:50%;background:var(--s3);border:2px solid var(--b2);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+.ch-name{font-family:'Syne',sans-serif;font-weight:700;font-size:1.15rem;line-height:1.2;margin-bottom:5px}
+.ch-meta{display:flex;gap:10px;flex-wrap:wrap}
+.ch-meta span{font-size:.75rem;color:var(--t2);display:flex;align-items:center;gap:3px}
+.score-area{display:flex;align-items:flex-end;gap:12px;margin-bottom:14px}
+.score-num{font-family:'Syne',sans-serif;font-weight:800;font-size:5rem;line-height:.9;letter-spacing:-4px;animation:scoreIn .5s cubic-bezier(.34,1.56,.64,1) both .1s}
+.score-side{display:flex;flex-direction:column;gap:6px;padding-bottom:6px}
+.score-denom{font-size:1rem;color:var(--t2)}
+.grade-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:20px;font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1)}
+.preset-badge{font-size:.7rem;color:var(--t2);font-style:italic;margin-top:2px}
+.hero-foot{display:flex;justify-content:space-between;font-size:.72rem;color:var(--t2);flex-wrap:wrap;gap:6px}
+
+/* ── STATS 3 ── */
+.stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 20px 12px}
+.sbox{background:var(--s1);border:1px solid var(--b1);border-radius:14px;padding:12px 10px;text-align:center}
+.sval{font-family:'Syne',sans-serif;font-weight:700;font-size:1.05rem;display:block;margin-bottom:2px}
+.slbl{font-size:.63rem;color:var(--t2);text-transform:uppercase;letter-spacing:.5px}
+
+/* ── METRIC CARDS ── */
+.mgrid{display:grid;gap:9px;padding:0 20px 4px;grid-template-columns:1fr}
+@media(min-width:520px){.mgrid{grid-template-columns:1fr 1fr}}
+@media(min-width:1100px){.mgrid{grid-template-columns:1fr 1fr 1fr}}
+.mc{background:var(--s2);border:1px solid var(--b1);border-radius:14px;padding:14px;position:relative;overflow:hidden;transition:border-color .2s,transform .15s}
+.mc:hover{border-color:var(--b2);transform:translateY(-1px)}
+.mc-accent{position:absolute;bottom:0;left:0;height:2px;background:var(--mc,var(--ac));width:var(--mw,0%);transition:width 1.2s cubic-bezier(.22,1,.36,1)}
+.mc-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.mc-lbl{display:flex;align-items:center;gap:7px;font-size:.72rem;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;font-weight:500}
+.mc-ico{font-size:.95rem}
+.mc-val{font-family:'Syne',sans-serif;font-weight:800;font-size:1.55rem;color:var(--mc,var(--ac))}
+.mc-track{height:3px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden;margin-bottom:6px}
+.mc-fill{height:100%;background:var(--mc,var(--ac));width:var(--mw,0%);transition:width 1.2s cubic-bezier(.22,1,.36,1)}
+.mc-info{font-size:.7rem;color:var(--t2);line-height:1.4}
+/* Weight highlight ring */
+.mc.weighted{border-color:rgba(79,140,255,.2);background:rgba(79,140,255,.04)}
+
+/* ── RADAR ── */
+.radar-card{background:var(--s1);border:1px solid var(--b1);border-radius:20px;margin:0 20px 12px;padding:16px;display:flex;flex-direction:column;align-items:center}
+.radar-labels{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;width:100%;max-width:300px;margin-top:10px}
+.rl{display:flex;align-items:center;gap:5px;font-size:.68rem;color:var(--t2)}
+.rl-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+
+/* ── TOP VIDEOS ── */
+.vid-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--b1)}
+.vid-item:last-child{border-bottom:none}
+.vid-rank{font-family:'Syne',sans-serif;font-weight:800;font-size:.85rem;min-width:22px;text-align:center;color:var(--t2)}
+.vid-info{flex:1;min-width:0}
+.vid-title{font-size:.82rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px}
+.vid-stats{font-size:.68rem;color:var(--t2);display:flex;gap:8px}
+.vid-bar{height:3px;border-radius:3px;margin-top:5px;transition:width .8s cubic-bezier(.22,1,.36,1)}
+
+/* ── BENCHMARK ── */
+.bench-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--b1)}
+.bench-row:last-child{border-bottom:none}
+.bench-label{font-size:.78rem;color:var(--t2);flex:1}
+.bench-bar-wrap{flex:2;display:flex;align-items:center;gap:6px}
+.bench-bar-bg{flex:1;height:4px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;position:relative}
+.bench-bar-fill{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.22,1,.36,1)}
+.bench-marker{position:absolute;top:-3px;width:2px;height:10px;background:rgba(255,255,255,.3);border-radius:1px}
+.bench-val{font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;min-width:28px;text-align:right}
+
+/* ── INSIGHTS ── */
+.insight{display:flex;gap:10px;align-items:flex-start;padding:10px 13px;background:var(--s2);border-radius:11px;border-left:2px solid var(--ic,var(--ye));margin-bottom:8px}
+.ins-ico{font-size:.95rem;flex-shrink:0;margin-top:1px}
+.ins-txt{font-size:.8rem;color:var(--t2);line-height:1.5}
+.ins-txt strong{color:var(--t1);font-weight:600}
+
+/* ── HISTORY ── */
+.h-filter{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none}
+.h-filter::-webkit-scrollbar{display:none}
+.hf-btn{flex-shrink:0;padding:5px 12px;border:1px solid var(--b1);border-radius:20px;background:transparent;color:var(--t2);font-size:.75rem;cursor:pointer;transition:all .2s;white-space:nowrap;font-family:'DM Sans',sans-serif}
+.hf-btn.on{background:rgba(79,140,255,.12);border-color:rgba(79,140,255,.3);color:var(--t1)}
+.h-item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--b1);cursor:pointer;transition:opacity .2s}
+.h-item:last-child{border-bottom:none}
+.h-item:hover{opacity:.72}
+.h-score{font-family:'Syne',sans-serif;font-weight:800;font-size:1.1rem;min-width:40px;text-align:center}
+.h-info{flex:1;min-width:0}
+.h-name{font-size:.86rem;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.h-meta{font-size:.68rem;color:var(--t2);margin-top:2px}
+.h-del{background:transparent;border:none;color:var(--t3);cursor:pointer;padding:4px 6px;border-radius:7px;font-size:.9rem;transition:color .2s,background .2s;flex-shrink:0}
+.h-del:hover{color:var(--re);background:rgba(239,68,68,.1)}
+
+/* ── COMPARE ── */
+.cmp-sel{width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:10px;color:var(--t1);font-family:'DM Sans',sans-serif;font-size:.82rem;padding:8px 10px;cursor:pointer;outline:none;transition:border-color .2s}
+.cmp-sel:focus{border-color:rgba(79,140,255,.5)}
+.cmp-bar{height:8px;border-radius:4px;transition:width .7s cubic-bezier(.22,1,.36,1)}
+
+/* ── CONFIG/SETTINGS ── */
+.preset-grid{display:grid;gap:8px;grid-template-columns:1fr 1fr;margin-bottom:16px}
+@media(min-width:520px){.preset-grid{grid-template-columns:1fr 1fr 1fr}}
+.preset-card{background:var(--s2);border:2px solid var(--b1);border-radius:14px;padding:12px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.preset-card:hover{border-color:var(--b2);transform:translateY(-1px)}
+.preset-card.active{border-color:rgba(79,140,255,.5);background:rgba(79,140,255,.08)}
+.preset-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--pc,#4f8cff);opacity:.7}
+.preset-ico{font-size:1.3rem;margin-bottom:6px}
+.preset-name{font-family:'Syne',sans-serif;font-weight:700;font-size:.82rem;margin-bottom:3px}
+.preset-desc{font-size:.7rem;color:var(--t2);line-height:1.4}
+.w-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.w-lbl{font-size:.78rem;color:var(--t2);min-width:90px}
+.w-slider{flex:1;-webkit-appearance:none;height:3px;border-radius:3px;background:rgba(255,255,255,.1);outline:none;cursor:pointer}
+.w-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--ac);cursor:pointer;transition:transform .15s}
+.w-slider::-webkit-slider-thumb:hover{transform:scale(1.25)}
+.w-val{font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;min-width:28px;text-align:right}
+.w-highlighted .w-slider::-webkit-slider-thumb{background:var(--gr)}
+.w-total{font-size:.72rem;padding:8px 12px;border-radius:8px;text-align:center;font-family:'Syne',sans-serif;font-weight:700}
+
+/* ── LOADER / EMPTY ── */
+.loader{display:flex;flex-direction:column;align-items:center;gap:14px;padding:80px 20px}
+.ring{width:42px;height:42px;border:3px solid rgba(79,140,255,.12);border-top-color:var(--ac);border-radius:50%;animation:spin .75s linear infinite}
+.loader-txt{color:var(--t2);font-size:.82rem;animation:pulse 1.5s ease-in-out infinite}
+.empty{display:flex;flex-direction:column;align-items:center;padding:64px 36px;gap:10px;text-align:center}
+.empty-ico{font-size:2.6rem;opacity:.22;margin-bottom:4px}
+.empty-ttl{font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;opacity:.45}
+.empty-sub{font-size:.78rem;color:var(--t2);line-height:1.6;max-width:230px}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--s2);border:1px solid var(--b2);border-radius:12px;padding:10px 18px;font-size:.82rem;z-index:600;animation:pop .25s ease;max-width:86vw;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.toast.err{border-color:rgba(239,68,68,.4);color:#fca5a5}
+.toast.ok{border-color:rgba(16,217,160,.35);color:#6ee7b7}
+
+/* ── BOTTOM NAV ── */
+.bnav{position:fixed;bottom:0;left:0;right:0;background:rgba(7,10,16,.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-top:1px solid var(--b1);display:flex;justify-content:space-around;padding:8px 0 max(8px,env(safe-area-inset-bottom));z-index:300}
+.bnav-btn{display:flex;flex-direction:column;align-items:center;gap:2px;background:transparent;border:none;color:var(--t2);font-size:.56rem;font-family:'DM Sans',sans-serif;cursor:pointer;padding:4px 14px;border-radius:10px;transition:color .2s;text-transform:uppercase;letter-spacing:.3px}
+.bnav-btn.on{color:var(--ac)}
+.bnav-btn svg{width:18px;height:18px;margin-bottom:1px}
+
+/* ── EXPORT BTN ── */
+.btn-sm{background:var(--s3);border:1px solid var(--b2);border-radius:9px;color:var(--t1);font-family:'DM Sans',sans-serif;font-size:.75rem;padding:6px 12px;cursor:pointer;transition:background .2s;display:inline-flex;align-items:center;gap:5px}
+.btn-sm:hover{background:var(--b2)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef,useMemo}=React;
+
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const API_KEY='AIzaSyBtr4ueW5iN9sdHq3Abooyq_FSgkZTnhXM';
+const YT='https://www.googleapis.com/youtube/v3';
+
+const PRESETS=[
+  {id:'default',name:'Équilibré',desc:'Scoring général toutes niches',ico:'⚖️',color:'#4f8cff',
+   w:{performance:30,frequency:20,engagement:25,regularity:10,trend:10,recency:5}},
+  {id:'growth',name:'Croissance',desc:'Priorité tendance & fréquence',ico:'🚀',color:'#10d9a0',
+   w:{performance:15,frequency:30,engagement:15,regularity:10,trend:25,recency:5}},
+  {id:'monetize',name:'Monétisation',desc:'Vues & performance avant tout',ico:'💰',color:'#f5c518',
+   w:{performance:45,frequency:15,engagement:20,regularity:10,trend:5,recency:5}},
+  {id:'community',name:'Communauté',desc:'Engagement & régularité',ico:'❤️',color:'#f97316',
+   w:{performance:15,frequency:10,engagement:45,regularity:20,trend:5,recency:5}},
+  {id:'consistent',name:'Régulier',desc:'Cadence & constance',ico:'📆',color:'#8b5cf6',
+   w:{performance:15,frequency:30,engagement:15,regularity:30,trend:5,recency:5}},
+  {id:'viral',name:'Viral',desc:'Tendance & perf récente',ico:'🔥',color:'#ef4444',
+   w:{performance:25,frequency:5,engagement:20,regularity:5,trend:35,recency:10}},
+];
+
+// ── API ───────────────────────────────────────────────────────────────────────
+async function resolveChannel(raw){
+  const input=raw.trim();
+  if(/^UC[\w-]{20,}$/.test(input)) return input;
+  const r=await fetch(`${YT}/search?part=snippet&type=channel&q=${encodeURIComponent(input)}&maxResults=1&key=${API_KEY}`);
+  const d=await r.json();
+  if(d.error) throw new Error(d.error.message);
+  if(!d.items||!d.items.length) throw new Error('Chaîne introuvable');
+  return d.items[0].snippet.channelId;
+}
+async function fetchChannel(id){
+  const r=await fetch(`${YT}/channels?part=snippet,statistics,contentDetails&id=${id}&key=${API_KEY}`);
+  const d=await r.json();
+  if(d.error) throw new Error(d.error.message);
+  if(!d.items||!d.items.length) throw new Error('Chaîne introuvable');
+  const c=d.items[0];
+  const th=c.snippet.thumbnails;
+  return{
+    id,title:c.snippet.title,
+    thumbnail:th&&(th.medium||th.default)&&(th.medium||th.default).url,
+    country:c.snippet.country,description:c.snippet.description,
+    createdAt:c.snippet.publishedAt,
+    subs:parseInt(c.statistics.subscriberCount)||0,
+    views:parseInt(c.statistics.viewCount)||0,
+    videos:parseInt(c.statistics.videoCount)||0,
+    uploadsPlaylist:c.contentDetails&&c.contentDetails.relatedPlaylists&&c.contentDetails.relatedPlaylists.uploads,
+  };
+}
+async function fetchVideos(pid,max){
+  max=max||20;
+  const r=await fetch(`${YT}/playlistItems?part=contentDetails&playlistId=${pid}&maxResults=${max}&key=${API_KEY}`);
+  const d=await r.json();
+  if(d.error) throw new Error(d.error.message);
+  const ids=(d.items||[]).map(function(i){return i.contentDetails&&i.contentDetails.videoId;}).filter(Boolean);
+  if(!ids.length) return[];
+  const r2=await fetch(`${YT}/videos?part=statistics,snippet&id=${ids.join(',')}&key=${API_KEY}`);
+  const d2=await r2.json();
+  if(d2.error) throw new Error(d2.error.message);
+  return(d2.items||[]).map(function(v){
+    return{id:v.id,title:v.snippet.title,publishedAt:v.snippet.publishedAt,
+      views:parseInt((v.statistics||{}).viewCount)||0,
+      likes:parseInt((v.statistics||{}).likeCount)||0,
+      comments:parseInt((v.statistics||{}).commentCount)||0};
+  });
+}
+
+// ── SCORING ───────────────────────────────────────────────────────────────────
+function computeScore(channel,videos,weights){
+  if(!videos.length) return{score:0,breakdown:{performance:0,frequency:0,engagement:0,regularity:0,trend:0,recency:0},stats:{},insights:[],topVideos:[],worstVideos:[]};
+  const sorted=videos.slice().sort(function(a,b){return new Date(b.publishedAt)-new Date(a.publishedAt);});
+  const now=Date.now();
+  const avgViews=videos.reduce(function(s,v){return s+v.views;},0)/videos.length;
+  const perfRatio=channel.subs>0?avgViews/channel.subs:0;
+  const perfScore=Math.min(100,Math.round(perfRatio<.01?perfRatio/.01*20:perfRatio<.05?20+(perfRatio-.01)/.04*40:perfRatio<.15?60+(perfRatio-.05)/.1*30:90+Math.min(10,(perfRatio-.15)/.15*10)));
+  var freqScore=0,uploadsPerWeek=0;
+  if(sorted.length>=2){
+    var spanDays=(new Date(sorted[0].publishedAt)-new Date(sorted[sorted.length-1].publishedAt))/86400000||1;
+    uploadsPerWeek=(sorted.length/spanDays)*7;
+    freqScore=uploadsPerWeek>=7?80:uploadsPerWeek>=3?100:uploadsPerWeek>=1?75+(uploadsPerWeek-1)/2*25:uploadsPerWeek>=.25?40+uploadsPerWeek*35:Math.max(0,uploadsPerWeek/.25*40);
+    freqScore=Math.round(freqScore);
+  }
+  const totalViews=videos.reduce(function(s,v){return s+v.views;},0);
+  const totalLikes=videos.reduce(function(s,v){return s+v.likes;},0);
+  const totalComments=videos.reduce(function(s,v){return s+v.comments;},0);
+  const engRatio=totalViews>0?(totalLikes+totalComments*2)/totalViews:0;
+  const engScore=Math.min(100,Math.round(engRatio<.02?engRatio/.02*40:engRatio<.05?40+(engRatio-.02)/.03*30:engRatio<.1?70+(engRatio-.05)/.05*20:90+Math.min(10,(engRatio-.1)/.1*10)));
+  var regScore=50;
+  if(sorted.length>=3){
+    var ivs=[];
+    for(var i=1;i<sorted.length;i++) ivs.push((new Date(sorted[i-1].publishedAt)-new Date(sorted[i].publishedAt))/86400000);
+    var mean=ivs.reduce(function(a,b){return a+b;},0)/ivs.length;
+    var cv=mean>0?Math.sqrt(ivs.reduce(function(s,x){return s+Math.pow(x-mean,2);},0)/ivs.length)/mean:1;
+    regScore=Math.min(100,Math.round(Math.max(0,100-cv*60)));
+  }
+  var trendScore=50;
+  if(sorted.length>=4){
+    var h=Math.floor(sorted.length/2);
+    var rec=sorted.slice(0,h).reduce(function(s,v){return s+v.views;},0)/h;
+    var old=sorted.slice(h).reduce(function(s,v){return s+v.views;},0)/h;
+    var tr=old>0?rec/old:1;
+    trendScore=Math.min(100,Math.round(tr>1.5?100:tr>1?50+(tr-1)/.5*50:tr>.5?tr*50:10));
+  }
+  const daysSince=sorted.length?(now-new Date(sorted[0].publishedAt).getTime())/86400000:999;
+  const recScore=Math.min(100,Math.round(daysSince<3?100:daysSince<7?100-(daysSince-3)/4*20:daysSince<14?80-(daysSince-7)/7*20:daysSince<30?60-(daysSince-14)/16*30:daysSince<90?30-(daysSince-30)/60*25:Math.max(0,5-(daysSince-90)/90*5)));
+  const w=weights;
+  const tot=w.performance+w.frequency+w.engagement+w.regularity+w.trend+w.recency;
+  const score=Math.round((perfScore*w.performance+freqScore*w.frequency+engScore*w.engagement+regScore*w.regularity+trendScore*w.trend+recScore*w.recency)/tot);
+  // Top & worst videos
+  const byViews=videos.slice().sort(function(a,b){return b.views-a.views;});
+  const topVideos=byViews.slice(0,5);
+  const worstVideos=byViews.slice(-3).reverse();
+  const maxV=topVideos.length?topVideos[0].views:1;
+  // Insights
+  const insights=[];
+  if(perfScore<40) insights.push({good:false,icon:'📉',text:'Vues moyennes faibles : <strong>'+fmt(Math.round(avgViews))+'</strong> pour <strong>'+fmt(channel.subs)+'</strong> abonnés'});
+  if(perfScore>75) insights.push({good:true,icon:'🚀',text:'Excellente perf ! <strong>'+pct(perfRatio)+'</strong> de vues/abonnés — la chaîne surperforme'});
+  if(freqScore<40) insights.push({good:false,icon:'⏳',text:'Fréquence faible : <strong>'+uploadsPerWeek.toFixed(1)+'/semaine</strong>. L\'algo YouTube aime la régularité'});
+  if(freqScore>=80) insights.push({good:true,icon:'📅',text:'Cadence excellente : <strong>'+uploadsPerWeek.toFixed(1)+'</strong> vidéos/semaine'});
+  if(engScore>70) insights.push({good:true,icon:'❤️',text:'Communauté très engagée : <strong>'+pct(engRatio)+'</strong> taux d\'engagement'});
+  if(engScore<30) insights.push({good:false,icon:'💬',text:'Engagement faible (<strong>'+pct(engRatio)+'</strong>). Calls-to-action en fin de vidéo recommandés'});
+  if(regScore<40) insights.push({good:false,icon:'📆',text:'Uploads irréguliers. Un calendrier fixe améliore la fidélisation'});
+  if(regScore>80) insights.push({good:true,icon:'⏱️',text:'Régularité impeccable — audience fidélisée'});
+  if(trendScore>75) insights.push({good:true,icon:'📈',text:'Tendance haussière : les vidéos récentes surpassent les anciennes'});
+  if(trendScore<30) insights.push({good:false,icon:'📉',text:'Tendance baissière — les vues récentes reculent par rapport aux anciennes'});
+  if(daysSince>30) insights.push({good:false,icon:'⏸️',text:'Dernière vidéo il y a <strong>'+Math.round(daysSince)+' jours</strong> — activité récente faible'});
+  return{score,breakdown:{performance:perfScore,frequency:freqScore,engagement:engScore,regularity:regScore,trend:trendScore,recency:recScore},
+    stats:{avgViews:Math.round(avgViews),uploadsPerWeek:parseFloat(uploadsPerWeek.toFixed(2)),engRatio,daysSince:Math.round(daysSince),totalViews,videoCount:videos.length,totalLikes,totalComments,maxVideoViews:maxV},
+    insights,topVideos,worstVideos};
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function fmt(n){if(!n&&n!==0)return'—';if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n.toLocaleString('fr');}
+function pct(r){return(r*100).toFixed(1)+'%';}
+function col(s){if(s>=75)return'#10d9a0';if(s>=55)return'#4f8cff';if(s>=35)return'#f5c518';if(s>=20)return'#f97316';return'#ef4444';}
+function gradeOf(s){if(s>=85)return{l:'S+',e:'🏆'};if(s>=75)return{l:'A',e:'⭐'};if(s>=60)return{l:'B',e:'📈'};if(s>=45)return{l:'C',e:'📊'};if(s>=30)return{l:'D',e:'⚠️'};return{l:'F',e:'🔴'};}
+function lsGet(k){try{return JSON.parse(localStorage.getItem(k));}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function ago(date){const d=(Date.now()-new Date(date))/86400000;if(d<1)return'aujourd\'hui';if(d<2)return'hier';if(d<7)return Math.round(d)+'j';if(d<30)return Math.round(d/7)+'sem';return Math.round(d/30)+'mois';}
+function presetIdOf(w){for(var i=0;i<PRESETS.length;i++){const p=PRESETS[i];if(Object.keys(p.w).every(function(k){return p.w[k]===w[k];}))return p.id;}return'custom';}
+function topWeight(w){return Object.entries(w).sort(function(a,b){return b[1]-a[1];})[0][0];}
+
+// ── RADAR ─────────────────────────────────────────────────────────────────────
+function RadarViz({breakdown,weights}){
+  const cx=100,cy=100,r=70;
+  const keys=['performance','frequency','engagement','regularity','trend','recency'];
+  const n=keys.length;
+  function angle(i){return(i/n)*2*Math.PI-Math.PI/2;}
+  function pt(i,radius){const a=angle(i);return[cx+radius*Math.cos(a),cy+radius*Math.sin(a)];}
+  const gridLvls=[25,50,75,100];
+  const dataPoints=keys.map(function(k,i){return pt(i,(breakdown[k]||0)/100*r);});
+  const poly=dataPoints.map(function(p){return p[0]+','+p[1];}).join(' ');
+  // highlight the highest-weighted metric
+  const tw=topWeight(weights);
+  return(
+    <svg viewBox="0 0 200 200" width="200" height="200" style={{display:'block',margin:'0 auto'}}>
+      {gridLvls.map(function(lv){
+        const pts=keys.map(function(_,i){const p=pt(i,lv/100*r);return p[0]+','+p[1];}).join(' ');
+        return <polygon key={lv} points={pts} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1"/>;
+      })}
+      {keys.map(function(_,i){const p=pt(i,r);return <line key={i} x1={cx} y1={cy} x2={p[0]} y2={p[1]} stroke="rgba(255,255,255,0.05)" strokeWidth="1"/>;} )}
+      <polygon points={poly} fill="rgba(79,140,255,0.15)" stroke="#4f8cff" strokeWidth="2" strokeLinejoin="round"/>
+      {dataPoints.map(function(p,i){
+        const isTop=keys[i]===tw;
+        return <circle key={i} cx={p[0]} cy={p[1]} r={isTop?5:3.5} fill={isTop?'#10d9a0':'#4f8cff'} stroke="var(--bg)" strokeWidth="2"/>;
+      })}
+      {keys.map(function(k,i){
+        const p=pt(i,r+15);
+        const v=breakdown[k]||0;
+        return <text key={i} x={p[0]} y={p[1]} textAnchor="middle" dominantBaseline="middle" fill={k===tw?'#10d9a0':'rgba(126,142,168,0.9)'} fontSize="8.5" fontFamily="DM Sans,sans-serif" fontWeight={k===tw?'700':'400'}>{v}</text>;
+      })}
+    </svg>
+  );
+}
+
+// ── METRIC CARD ───────────────────────────────────────────────────────────────
+function MC({icon,label,value,info,wt,tw}){
+  const c=col(value);
+  const[w,setW]=useState(0);
+  useEffect(function(){const t=setTimeout(function(){setW(value);},100);return function(){clearTimeout(t);};} ,[value]);
+  const highlight=wt>=25;
+  return(
+    <div className={'mc'+(highlight?' weighted':'')} style={{'--mc':c,'--mw':w+'%'}}>
+      <div className="mc-hd">
+        <div className="mc-lbl"><span className="mc-ico">{icon}</span><span>{label}</span>{highlight&&<span style={{fontSize:'.6rem',color:'var(--t2)',marginLeft:2}}>{wt}%</span>}</div>
+        <span className="mc-val">{value}</span>
+      </div>
+      <div className="mc-track"><div className="mc-fill"/></div>
+      {info&&<div className="mc-info">{info}</div>}
+      <div className="mc-accent"/>
+    </div>
+  );
+}
+
+// ── TOP VIDEOS ────────────────────────────────────────────────────────────────
+function TopVideos({videos,maxV,label}){
+  if(!videos||!videos.length) return null;
+  return(
+    <div>
+      {videos.map(function(v,i){
+        const w=maxV>0?v.views/maxV*100:0;
+        const engR=v.views>0?(v.likes+v.comments*2)/v.views:0;
+        return(
+          <div key={v.id} className="vid-item">
+            <div className="vid-rank">{i+1}</div>
+            <div className="vid-info">
+              <div className="vid-title">{v.title}</div>
+              <div className="vid-stats">
+                <span>👁️ {fmt(v.views)}</span>
+                <span>👍 {fmt(v.likes)}</span>
+                <span>💬 {fmt(v.comments)}</span>
+                <span style={{color:'var(--t3)'}}>· {ago(v.publishedAt)}</span>
+              </div>
+              <div className="vid-bar" style={{width:w+'%',background:col(Math.round(w)),maxWidth:'100%'}}/>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── BENCHMARK ────────────────────────────────────────────────────────────────
+function Benchmark({channel,stats}){
+  // Simple benchmarks by channel size
+  const subs=channel.subs;
+  let tier,benchAvgViews,benchEng;
+  if(subs<10000){tier='Nano';benchAvgViews=subs*0.12;benchEng=0.06;}
+  else if(subs<100000){tier='Micro';benchAvgViews=subs*0.08;benchEng=0.04;}
+  else if(subs<1000000){tier='Mid';benchAvgViews=subs*0.05;benchEng=0.03;}
+  else if(subs<10000000){tier='Macro';benchAvgViews=subs*0.04;benchEng=0.02;}
+  else{tier='Mega';benchAvgViews=subs*0.02;benchEng=0.015;}
+  const avPct=Math.min(100,Math.round(stats.avgViews/benchAvgViews*100));
+  const enPct=Math.min(100,Math.round(stats.engRatio/benchEng*100));
+  const items=[
+    {label:'Vues moy. vs benchmark',you:stats.avgViews,bench:Math.round(benchAvgViews),pct:avPct,fmt:fmt},
+    {label:'Engagement vs benchmark',you:pct(stats.engRatio),bench:pct(benchEng),pct:enPct,fmt:function(x){return x;}},
+  ];
+  return(
+    <div>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+        <div className="chip" style={{borderColor:'rgba(79,140,255,.3)',color:'#4f8cff'}}>Tier : {tier}</div>
+        <div style={{fontSize:'.72rem',color:'var(--t2)'}}>vs canaux similaires ({fmt(subs)} abonnés)</div>
+      </div>
+      {items.map(function(it,i){
+        const c=it.pct>=100?'#10d9a0':it.pct>=70?'#4f8cff':it.pct>=50?'#f5c518':'#f97316';
+        return(
+          <div key={i} className="bench-row">
+            <div className="bench-label">{it.label}</div>
+            <div className="bench-bar-wrap">
+              <div className="bench-bar-bg">
+                <div className="bench-bar-fill" style={{width:Math.min(it.pct,100)+'%',background:c}}/>
+                <div className="bench-marker" style={{left:'100%'}}/>
+              </div>
+              <div className="bench-val" style={{color:c}}>{it.pct}%</div>
+            </div>
+          </div>
+        );
+      })}
+      <div style={{fontSize:'.7rem',color:'var(--t3)',marginTop:8}}>100% = moyenne de la catégorie {tier}</div>
+    </div>
+  );
+}
+
+// ── HISTORY TAB ───────────────────────────────────────────────────────────────
+function HistoryTab({history,onLoad,onDel}){
+  const[filter,setFilter]=useState('all');
+  const filters=[{id:'all',lbl:'Tous'},{id:'good',lbl:'≥ 60'},{id:'mid',lbl:'40–59'},{id:'bad',lbl:'< 40'}];
+  const filtered=history.filter(function(h){if(filter==='good')return h.score>=60;if(filter==='mid')return h.score>=40&&h.score<60;if(filter==='bad')return h.score<40;return true;});
+  if(!history.length) return(<div className="empty"><div className="empty-ico">📭</div><div className="empty-ttl">Aucun historique</div><div className="empty-sub">Analysez une chaîne pour la retrouver ici</div></div>);
+  return(
+    <div style={{paddingTop:12}}>
+      <div className="pad">
+        <div className="h-filter">
+          {filters.map(function(f){return(<button key={f.id} className={'hf-btn'+(filter===f.id?' on':'')} onClick={function(){setFilter(f.id);}}>{f.lbl}</button>);} )}
+        </div>
+      </div>
+      <div className="card">
+        {!filtered.length&&<div style={{textAlign:'center',padding:'20px',color:'var(--t2)',fontSize:'.82rem'}}>Aucune chaîne dans ce filtre</div>}
+        {filtered.map(function(ch){
+          return(
+            <div key={ch.id} className="h-item" onClick={function(){onLoad(ch);}}>
+              {ch.thumbnail?<img src={ch.thumbnail} style={{width:36,height:36,borderRadius:'50%',objectFit:'cover',flexShrink:0}} alt=""/>:<div style={{width:36,height:36,borderRadius:'50%',background:'var(--s3)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>📺</div>}
+              <div className="h-info">
+                <div className="h-name">{ch.title}</div>
+                <div className="h-meta">{fmt(ch.subs)} abonnés · {ch.presetName||'Équilibré'} · {new Date(ch.date).toLocaleDateString('fr')}</div>
+              </div>
+              <div className="h-score" style={{color:col(ch.score)}}>{ch.score}</div>
+              <button className="h-del" onClick={function(e){e.stopPropagation();onDel(ch.id);}}>🗑</button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── COMPARE TAB ───────────────────────────────────────────────────────────────
+function CompareTab({history}){
+  const[a,setA]=useState((history[0]||{}).id||'');
+  const[b,setB]=useState((history[1]||{}).id||'');
+  if(history.length<2) return(<div className="empty"><div className="empty-ico">⚖️</div><div className="empty-ttl">Pas assez de données</div><div className="empty-sub">Analysez au moins 2 chaînes pour les comparer</div></div>);
+  const chA=history.find(function(h){return h.id===a;});
+  const chB=history.find(function(h){return h.id===b;});
+  const metrics=['performance','frequency','engagement','regularity','trend','recency'];
+  const mlbls={performance:'Perf',frequency:'Fréq',engagement:'Eng',regularity:'Rég',trend:'Trend',recency:'Récence'};
+  return(
+    <div style={{paddingTop:12}}>
+      <div className="card">
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
+          <select className="cmp-sel" value={a} onChange={function(e){setA(e.target.value);}}>
+            {history.map(function(h){return<option key={h.id} value={h.id}>{h.title.slice(0,22)}</option>;})}
+          </select>
+          <select className="cmp-sel" value={b} onChange={function(e){setB(e.target.value);}}>
+            {history.map(function(h){return<option key={h.id} value={h.id}>{h.title.slice(0,22)}</option>;})}
+          </select>
+        </div>
+        {chA&&chB&&(
+          <div>
+            <div style={{display:'flex',justifyContent:'space-around',marginBottom:20,gap:10}}>
+              {[chA,chB].map(function(ch,i){
+                return(
+                  <div key={i} style={{textAlign:'center',flex:1}}>
+                    {ch.thumbnail&&<img src={ch.thumbnail} style={{width:40,height:40,borderRadius:'50%',objectFit:'cover',margin:'0 auto 6px',display:'block'}} alt=""/>}
+                    <div style={{fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:'2.2rem',color:col(ch.score),lineHeight:1}}>{ch.score}</div>
+                    <div style={{fontSize:'.74rem',color:'var(--t2)',marginTop:3}}>{ch.title.slice(0,14)}</div>
+                  </div>
+                );
+              })}
+            </div>
+            {metrics.map(function(m){
+              const va=(chA.breakdown||{})[m]||0;
+              const vb=(chB.breakdown||{})[m]||0;
+              const mx=Math.max(va,vb,1);
+              const winner=va>vb?0:va<vb?1:-1;
+              return(
+                <div key={m} style={{marginBottom:10}}>
+                  <div style={{fontSize:'.68rem',color:'var(--t2)',marginBottom:4,textTransform:'uppercase',letterSpacing:'.5px'}}>{mlbls[m]}</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:3}}>
+                    <div style={{display:'flex',alignItems:'center',gap:6}}>
+                      <div style={{width:va/mx*100+'%',maxWidth:'100%',height:8,borderRadius:4,background:col(va),minWidth:2,transition:'width .7s cubic-bezier(.22,1,.36,1)',outline:winner===0?'2px solid rgba(255,255,255,.2)':'none'}}/>
+                      <span style={{fontSize:'.68rem',color:'var(--t2)',fontWeight:winner===0?700:400}}>{va}</span>
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:6}}>
+                      <div style={{width:vb/mx*100+'%',maxWidth:'100%',height:8,borderRadius:4,background:col(vb),opacity:.75,minWidth:2,transition:'width .7s cubic-bezier(.22,1,.36,1)',outline:winner===1?'2px solid rgba(255,255,255,.2)':'none'}}/>
+                      <span style={{fontSize:'.68rem',color:'var(--t2)',fontWeight:winner===1?700:400}}>{vb}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── SETTINGS TAB ─────────────────────────────────────────────────────────────
+function SettingsTab({weights,onW,activePreset}){
+  const tot=Object.values(weights).reduce(function(a,b){return a+b;},0);
+  const lbls={performance:'Performance',frequency:'Fréquence',engagement:'Engagement',regularity:'Régularité',trend:'Tendance',recency:'Récence'};
+  const topW=topWeight(weights);
+  return(
+    <div style={{paddingTop:12}}>
+      <div className="sec">Pré-configurations</div>
+      <div style={{padding:'0 20px 4px'}}>
+        <div className="preset-grid">
+          {PRESETS.map(function(p){
+            return(
+              <div key={p.id} className={'preset-card'+(activePreset===p.id?' active':'')} style={{'--pc':p.color}} onClick={function(){onW('_preset',p.w);}}>
+                <div className="preset-ico">{p.ico}</div>
+                <div className="preset-name">{p.name}</div>
+                <div className="preset-desc">{p.desc}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="sec">Pondération manuelle</div>
+      <div className="card">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+          <div style={{fontSize:'.72rem',color:'var(--t2)',fontFamily:'Syne,sans-serif',textTransform:'uppercase',letterSpacing:'1px'}}>Poids par critère</div>
+          <div className="w-total" style={{color:tot===100?'#10d9a0':'#f5c518',background:tot===100?'rgba(16,217,160,.08)':'rgba(245,197,24,.08)',border:'1px solid '+(tot===100?'rgba(16,217,160,.2)':'rgba(245,197,24,.2)')}}>Total : {tot}%</div>
+        </div>
+        {Object.entries(lbls).map(function([k,l]){
+          const isTop=k===topW;
+          return(
+            <div key={k} className={'w-row'+(isTop?' w-highlighted':'')}>
+              <span className="w-lbl" style={{color:isTop?'var(--t1)':'var(--t2)',fontWeight:isTop?600:400}}>{l}{isTop&&<span style={{fontSize:'.6rem',color:'var(--gr)',marginLeft:4}}>★ top</span>}</span>
+              <input type="range" min={0} max={60} step={5} value={weights[k]} className="w-slider"
+                onChange={function(e){onW(k,parseInt(e.target.value));}}/>
+              <span className="w-val" style={{color:col(weights[k])}}>{weights[k]}%</span>
+            </div>
+          );
+        })}
+        <button onClick={function(){onW('_preset',PRESETS[0].w);}} className="btn-sm" style={{marginTop:6}}>↩ Équilibré par défaut</button>
+      </div>
+      <div className="sec">À propos des métriques</div>
+      <div className="card">
+        {[
+          ['🎯','Performance','Ratio vues moyennes / abonnés. Mesure si la chaîne surperforme sa taille.'],
+          ['📅','Fréquence','Cadence d\'upload. Idéal : 1–3 vidéos/semaine pour la plupart des niches.'],
+          ['❤️','Engagement','(likes + commentaires×2) / vues. Qualité et réactivité de la communauté.'],
+          ['⏱️','Régularité','Coefficient de variation des intervalles entre uploads — l\'algo aime la constance.'],
+          ['📈','Tendance','Vues récentes vs vidéos plus anciennes. Détecte la croissance ou le déclin.'],
+          ['🕒','Récence','Temps depuis le dernier upload. Pénalise les chaînes inactives.'],
+        ].map(function(item){
+          return(
+            <div key={item[1]} style={{display:'flex',gap:10,marginBottom:12}}>
+              <span style={{fontSize:'1rem',flexShrink:0,marginTop:1}}>{item[0]}</span>
+              <div>
+                <div style={{fontWeight:600,fontSize:'.82rem',marginBottom:2}}>{item[1]}</div>
+                <div style={{fontSize:'.76rem',color:'var(--t2)',lineHeight:1.5}}>{item[2]}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── APP ───────────────────────────────────────────────────────────────────────
+function App(){
+  const[q,setQ]=useState('');
+  const[loading,setLoading]=useState(false);
+  const[step,setStep]=useState('');
+  const[result,setResult]=useState(null);
+  const[history,setHistory]=useState(lsGet('yts2_hist')||[]);
+  const[tab,setTab]=useState('analyze');
+  const[toast,setToast]=useState(null);
+  const[weights,setWeights]=useState(lsGet('yts2_w')||PRESETS[0].w);
+  const[vidTab,setVidTab]=useState('top');
+
+  useEffect(function(){lsSet('yts2_hist',history);},[history]);
+  useEffect(function(){lsSet('yts2_w',weights);},[weights]);
+
+  const activePreset=presetIdOf(weights);
+  const currentPreset=PRESETS.find(function(p){return p.id===activePreset;})||PRESETS[0];
+
+  function showToast(msg,type){setToast({msg,type:type||'info'});setTimeout(function(){setToast(null);},3000);}
+
+  async function analyze(){
+    if(!q.trim()) return;
+    setLoading(true);setStep('Recherche de la chaîne...');setResult(null);
+    try{
+      const id=await resolveChannel(q.trim());
+      setStep('Récupération des statistiques...');
+      const ch=await fetchChannel(id);
+      setStep('Analyse des 20 vidéos récentes...');
+      const vids=await fetchVideos(ch.uploadsPlaylist,20);
+      setStep('Calcul du score...');
+      const res=computeScore(ch,vids,weights);
+      const entry={
+        id:ch.id,title:ch.title,thumbnail:ch.thumbnail,description:ch.description,
+        score:res.score,subs:ch.subs,views:ch.views,videos:ch.videos,
+        breakdown:res.breakdown,stats:res.stats,insights:res.insights,
+        topVideos:res.topVideos,worstVideos:res.worstVideos,
+        country:ch.country,date:new Date().toISOString(),
+        presetId:activePreset,presetName:currentPreset.name,weightsSnapshot:Object.assign({},weights)
+      };
+      setResult(entry);
+      setHistory(function(p){return[entry].concat(p.filter(function(h){return h.id!==entry.id;})).slice(0,25);});
+      setTab('analyze');
+    }catch(e){
+      showToast(e.message||'Erreur API','err');
+    }finally{
+      setLoading(false);setStep('');
+    }
+  }
+
+  function handleW(k,v){
+    if(k==='_preset'){setWeights(Object.assign({},v));return;}
+    setWeights(function(p){return Object.assign({},p,{[k]:v});});
+  }
+
+  function exportJSON(){
+    if(!result) return;
+    const blob=new Blob([JSON.stringify(result,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=result.title.replace(/[^a-z0-9]/gi,'_')+'_score.json';
+    a.click();URL.revokeObjectURL(url);
+    showToast('Export JSON téléchargé','ok');
+  }
+
+  function copyScore(){
+    if(!result) return;
+    const txt=result.title+' — Score '+result.score+'/100 ('+currentPreset.name+')\n'
+      +'Performance: '+result.breakdown.performance+' | Fréquence: '+result.breakdown.frequency
+      +' | Engagement: '+result.breakdown.engagement+' | Régularité: '+result.breakdown.regularity
+      +' | Tendance: '+result.breakdown.trend+' | Récence: '+result.breakdown.recency;
+    navigator.clipboard.writeText(txt).then(function(){showToast('Copié dans le presse-papier','ok');});
+  }
+
+  const scoreC=result?col(result.score):'#4f8cff';
+  const g=result?gradeOf(result.score):null;
+  const MDEF=[
+    {k:'performance',icon:'🎯',lbl:'Performance'},
+    {k:'frequency',icon:'📅',lbl:'Fréquence'},
+    {k:'engagement',icon:'❤️',lbl:'Engagement'},
+    {k:'regularity',icon:'⏱️',lbl:'Régularité'},
+    {k:'trend',icon:'📈',lbl:'Tendance'},
+    {k:'recency',icon:'🕒',lbl:'Récence'},
+  ];
+  function mInfo(k){
+    if(!result||!result.stats) return '';
+    const s=result.stats;
+    if(k==='performance') return fmt(s.avgViews)+' vues moy. / '+fmt(result.subs)+' abonnés';
+    if(k==='frequency') return s.uploadsPerWeek+' vidéo/semaine';
+    if(k==='engagement') return s.engRatio?pct(s.engRatio)+' taux d\'engagement':'';
+    if(k==='regularity') return 'Constance des intervalles d\'upload';
+    if(k==='trend') return 'Vues récentes vs vidéos plus anciennes';
+    if(k==='recency') return s.daysSince!=null?'Dernier upload il y a '+s.daysSince+'j':'';
+    return '';
+  }
+
+  const navItems=[
+    {id:'analyze',lbl:'Analyse',svg:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>},
+    {id:'history',lbl:'Historique',svg:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>},
+    {id:'compare',lbl:'Comparer',svg:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22,12 18,12 15,21 9,3 6,12 2,12"/></svg>},
+    {id:'settings',lbl:'Config',svg:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/></svg>},
+  ];
+
+  return(
+    <div className="app">
+      {/* ── HEADER ── */}
+      <div className="site-header">
+        <div className="site-title">Channel Scorer</div>
+        <div className="site-sub">Analyse YouTube · {history.length} chaîne{history.length!==1?'s':''} analysée{history.length!==1?'s':''} · Preset : <span style={{color:'var(--t1)'}}>{currentPreset.ico} {currentPreset.name}</span></div>
+        {tab==='analyze'&&(
+          <div className="srch-row">
+            <div className="srch-box">
+              <span style={{color:'var(--t3)',fontSize:'.9rem'}}>🔍</span>
+              <input value={q} onChange={function(e){setQ(e.target.value);}}
+                onKeyDown={function(e){if(e.key==='Enter')analyze();}}
+                placeholder="@handle, nom ou Channel ID..."
+                autoComplete="off" autoCorrect="off" autoCapitalize="off"/>
+            </div>
+            <button className="btn-go" onClick={analyze} disabled={loading||!q.trim()}>
+              {loading?'…':'Scorer'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── ANALYZE ── */}
+      {tab==='analyze'&&(
+        <div>
+          {loading&&(
+            <div className="loader">
+              <div className="ring"/>
+              <div className="loader-txt">{step}</div>
+            </div>
+          )}
+          {!loading&&!result&&(
+            <div className="empty" style={{marginTop:20}}>
+              <div className="empty-ico">📡</div>
+              <div className="empty-ttl">Prêt à scorer</div>
+              <div className="empty-sub">Entrez un @handle, nom ou Channel ID, puis appuyez sur Scorer</div>
+              {history.length>0&&(
+                <div style={{marginTop:24,width:'100%'}}>
+                  <div className="sec">Récents</div>
+                  <div className="card" style={{padding:'4px 16px'}}>
+                    {history.slice(0,4).map(function(ch){
+                      return(
+                        <div key={ch.id} className="h-item" onClick={function(){setResult(ch);setTab('analyze');}}>
+                          {ch.thumbnail?<img src={ch.thumbnail} style={{width:34,height:34,borderRadius:'50%',objectFit:'cover',flexShrink:0}} alt=""/>:<div style={{width:34,height:34,borderRadius:'50%',background:'var(--s3)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:'.9rem'}}>📺</div>}
+                          <div className="h-info">
+                            <div className="h-name">{ch.title}</div>
+                            <div className="h-meta">{fmt(ch.subs)} abonnés · {ch.presetName||'Équilibré'}</div>
+                          </div>
+                          <div style={{fontFamily:'Syne,sans-serif',fontWeight:800,fontSize:'1.05rem',color:col(ch.score)}}>{ch.score}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          {!loading&&result&&(
+            <div className="fade">
+              {/* HERO */}
+              <div className="hero" style={{'--hc1':scoreC,'--hc2':col((result.breakdown||{}).engagement||50)}}>
+                <div className="hero-bar"/>
+                <div className="ch-row">
+                  {result.thumbnail?<img src={result.thumbnail} className="ch-av" alt=""/>:<div className="ch-av-ph">📺</div>}
+                  <div style={{flex:1,minWidth:0}}>
+                    <div className="ch-name">{result.title}</div>
+                    <div className="ch-meta">
+                      <span>👥 {fmt(result.subs)}</span>
+                      <span>🎬 {fmt(result.videos)}</span>
+                      {result.country&&<span>🌍 {result.country}</span>}
+                    </div>
+                  </div>
+                </div>
+                <div className="score-area">
+                  <div className="score-num" style={{color:scoreC}}>{result.score}</div>
+                  <div className="score-side">
+                    <div className="score-denom">/100</div>
+                    <div className="grade-pill" style={{borderColor:scoreC+'50',color:scoreC}}>{g.e} {g.l}</div>
+                    <div className="preset-badge">{result.presetName||'Équilibré'}</div>
+                  </div>
+                </div>
+                <div className="hero-foot">
+                  <span>Sur {result.stats&&result.stats.videoCount} vidéos récentes</span>
+                  <div style={{display:'flex',gap:8}}>
+                    <button className="btn-sm" onClick={copyScore} title="Copier le score">📋 Copier</button>
+                    <button className="btn-sm" onClick={exportJSON} title="Exporter JSON">⬇️ JSON</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* STATS 3 */}
+              <div className="stats3">
+                <div className="sbox"><span className="sval">{fmt(result.stats&&result.stats.avgViews)}</span><span className="slbl">Vues/vidéo</span></div>
+                <div className="sbox"><span className="sval">{result.stats&&result.stats.uploadsPerWeek}/sem</span><span className="slbl">Fréquence</span></div>
+                <div className="sbox"><span className="sval">{(result.stats&&result.stats.engRatio)?pct(result.stats.engRatio):'—'}</span><span className="slbl">Engagement</span></div>
+              </div>
+
+              {/* METRICS */}
+              <div className="sec">Métriques détaillées</div>
+              <div className="mgrid">
+                {MDEF.map(function(m){
+                  return<MC key={m.k} icon={m.icon} label={m.lbl} value={(result.breakdown||{})[m.k]||0} info={mInfo(m.k)} wt={weights[m.k]} tw={topWeight(weights)}/>;
+                })}
+              </div>
+
+              {/* RADAR */}
+              <div className="sec">Radar</div>
+              <div className="radar-card">
+                <RadarViz breakdown={result.breakdown} weights={weights}/>
+                <div className="radar-labels">
+                  {MDEF.map(function(m){
+                    return(<div key={m.k} className="rl"><div className="rl-dot" style={{background:col((result.breakdown||{})[m.k]||0)}}/><span>{m.icon} {m.lbl} — {(result.breakdown||{})[m.k]||0}</span></div>);
+                  })}
+                </div>
+              </div>
+
+              {/* BENCHMARK */}
+              <div className="sec">Benchmark</div>
+              <div className="card">
+                <Benchmark channel={result} stats={result.stats}/>
+              </div>
+
+              {/* TOP VIDEOS */}
+              <div className="sec">
+                Vidéos
+                <div style={{display:'flex',gap:6,marginLeft:'auto'}}>
+                  {['top','worst'].map(function(t){return(<button key={t} className={'hf-btn'+(vidTab===t?' on':'')} onClick={function(){setVidTab(t);}} style={{fontSize:'.68rem',padding:'3px 10px'}}>{t==='top'?'🏆 Top':'⚠️ Moins vues'}</button>);})}
+                </div>
+              </div>
+              <div className="card">
+                <TopVideos videos={vidTab==='top'?result.topVideos:result.worstVideos} maxV={(result.topVideos&&result.topVideos[0]&&result.topVideos[0].views)||1}/>
+              </div>
+
+              {/* INSIGHTS */}
+              {result.insights&&result.insights.length>0&&(
+                <div>
+                  <div className="sec">Insights & recommandations</div>
+                  <div style={{padding:'0 20px 4px'}}>
+                    {result.insights.map(function(ins,i){
+                      return(
+                        <div key={i} className="insight" style={{'--ic':ins.good?'#10d9a0':'#f5c518'}}>
+                          <span className="ins-ico">{ins.icon}</span>
+                          <div className="ins-txt" dangerouslySetInnerHTML={{__html:ins.text}}/>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* TOTAL VIEWS */}
+              <div className="card" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <div>
+                  <div style={{fontSize:'.82rem',color:'var(--t2)',marginBottom:3}}>Vues totales de la chaîne</div>
+                  <div style={{fontFamily:'Syne,sans-serif',fontWeight:700,fontSize:'1.1rem'}}>{fmt(result.views)}</div>
+                </div>
+                <div style={{textAlign:'right'}}>
+                  <div style={{fontSize:'.82rem',color:'var(--t2)',marginBottom:3}}>Analysé le</div>
+                  <div style={{fontSize:'.82rem'}}>{new Date(result.date).toLocaleDateString('fr',{day:'numeric',month:'short',year:'numeric'})}</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab==='history'&&<HistoryTab history={history} onLoad={function(ch){setResult(ch);setTab('analyze');}} onDel={function(id){setHistory(function(p){return p.filter(function(h){return h.id!==id;});});if(result&&result.id===id)setResult(null);}}/>}
+      {tab==='compare'&&<CompareTab history={history}/>}
+      {tab==='settings'&&<SettingsTab weights={weights} onW={handleW} activePreset={activePreset}/>}
+
+      {/* NAV */}
+      <div className="bnav">
+        {navItems.map(function(n){
+          return(
+            <button key={n.id} className={'bnav-btn'+(tab===n.id?' on':'')} onClick={function(){setTab(n.id);}}>
+              {n.svg}{n.lbl}
+            </button>
+          );
+        })}
+      </div>
+
+      {toast&&<div className={'toast'+(toast.type==='err'?' err':toast.type==='ok'?' ok':'')}>{toast.msg}</div>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
